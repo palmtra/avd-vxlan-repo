@@ -8,6 +8,7 @@ gateway decisions (anycast only, no secondaries, no DHCP relay, MTU).
 import ipaddress
 from collections import namedtuple
 
+from .render import evpn_scheme
 from .services import dc_tenants, iter_services, node_groups
 
 Finding = namedtuple("Finding", "level dc where message")
@@ -191,6 +192,14 @@ def check_services(dc, hostvars, hosts, vni_ranges, default_pool):
                 "rd_override %r is a full RD, which every leaf would share; give the assigned number only "
                 "(the leaf router-id is the admin field)" % data.get("rd_override"),
             ))
+
+        scheme_rd, scheme_rt = evpn_scheme(data)
+        if data.get("rd_override") is not None and _int(data.get("rd_override")) != _int(scheme_rd):
+            findings.append(Finding("warning", dc, where, "rd_override %r is not the fabric scheme (<router-id>:%s)" % (data.get("rd_override"), scheme_rd)))
+        if data.get("rt_override") is not None and scheme_rt and str(data.get("rt_override")) != scheme_rt:
+            findings.append(Finding("warning", dc, where, "rt_override %r is not the fabric scheme (%s)" % (data.get("rt_override"), scheme_rt)))
+        if kind == "svi" and str(service["vrf"]) == "default":
+            findings.append(Finding("warning", dc, where, "SVI in VRF default: its subnet gets no network statement from this repo"))
 
         vni = _int(data.get("vni_override"))
         if vni is None or not 1 <= vni <= 16777215:

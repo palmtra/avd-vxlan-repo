@@ -14,7 +14,7 @@ tenants:
             mtu: 9214
             vni_override: 20100
             rd_override: 100
-            rt_override: "50001:100"
+            rt_override: "20100:100"
             _migration: {vni_pool: customer, gateway_mode: distributed_anycast}
           # Centralized anycast: gateway on PAIR2, L2 only on PAIR1.
           - id: 200

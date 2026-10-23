@@ -12,6 +12,9 @@
 # Leaf pairs are the node_groups in group_vars/<DC>_FABRIC.yml. A service is
 # placed on leaf pairs with `tags: [<node group>]`.
 #
+# Only VTEP leaves are listed: non-VTEP switches and the legacy MLS get no
+# AVD config. Lisle is production; Omaha hosts are placeholders.
+#
 # The two DCs are isolated (no multisite). They are built separately and
 # deployed with separate change controls.
 # -----------------------------------------------------------------------------
@@ -27,8 +30,14 @@ all:
             LISLE_LEAVES:
     LISLE_LEAVES:
       hosts:
-        eos-leaf-lis-01:
-        eos-leaf-lis-02:
+        chi01-blf01:
+        chi01-blf02:
+        fnts-chi01-aggacc-sw01:
+        fnts-chi01-aggacc-sw02:
+        fnts-chi01-aggacc-sw05:
+        fnts-chi01-aggacc-sw06:
+        fnts-chi01-aggacc-sw11:
+        fnts-chi01-aggacc-sw12:
 
     OMAHA:
       children:

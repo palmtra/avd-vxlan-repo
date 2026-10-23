@@ -1,7 +1,8 @@
 ---
 # -----------------------------------------------------------------------------
 # Omaha fabric facts, mirrored from production. NOT rendered, NOT deployed.
-# See group_vars/LISLE_FABRIC.yml for what each value is used for.
+# See group_vars/LISLE_FABRIC.yml for what each value is used for and for the
+# EVPN scheme (the same in both DCs).
 #
 # PLACEHOLDERS: replace with production values, then set
 # _fabric_facts_verified to true. Deploy refuses to run for this DC until then.

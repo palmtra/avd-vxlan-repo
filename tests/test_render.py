@@ -45,11 +45,33 @@ def test_distributed_svi_on_every_pair(built):
         assert "vxlan vlan 100 vni 20100" in leaf
 
 
-def test_rd_rt_overrides(built):
-    assert "rd 10.250.0.1:100\n      route-target both 50001:100" in built["leaf1a"]
+def test_evpn_scheme_rd_router_id_vlan_rt_vni_vlan(built):
+    # Explicit overrides (VLAN 100) and the scheme default (VLAN 200, 300) agree.
+    assert "rd 10.250.0.1:100\n      route-target both 20100:100" in built["leaf1a"]
     assert "rd 10.250.0.4:100\n" in built["leaf2b"]
-    # No override: AVD's <router-id>:<vni> and <vni>:<vni>.
-    assert "rd 10.250.0.1:20300\n      route-target both 20300:20300" in built["leaf1a"]
+    assert "rd 10.250.0.1:300\n      route-target both 20300:300" in built["leaf1a"]
+    assert "rd 10.250.0.3:200\n      route-target both 10200:200" in built["leaf2a"]
+
+
+def test_svi_subnets_get_network_statements_where_the_svi_is(built):
+    assert "   vrf PROD\n      network 10.100.0.0/24\n" in built["leaf1a"]
+    assert "10.200.0.0/24" not in built["leaf1a"]  # centralized SVI lives on PAIR2 only
+    assert "   vrf PROD\n      network 10.100.0.0/24\n      network 10.200.0.0/24" in built["leaf2b"]
+
+
+def test_slice_networks_skip_default_vrf():
+    full = {
+        "vlan_interfaces": [
+            {"name": "Vlan100", "vrf": "PROD", "ip_address_virtual": "10.100.0.1/24"},
+            {"name": "Vlan101", "vrf": "PROD", "ip_address_virtual": "10.101.0.1/25"},
+            {"name": "Vlan102", "ip_address_virtual": "10.102.0.1/24"},
+        ],
+        "router_bgp": {"as": "65101", "vrfs": [{"name": "PROD", "rd": "x", "neighbors": [{}]}]},
+    }
+    assert slice_services(full, {100, 101, 102}, {100, 101, 102})["router_bgp"] == {
+        "as": "65101",
+        "vrfs": [{"name": "PROD", "networks": [{"prefix": "10.100.0.0/24"}, {"prefix": "10.101.0.0/25"}]}],
+    }
 
 
 def test_centralized_gateway_only_on_gateway_pair(built):
@@ -70,7 +92,8 @@ def test_l2_only_vlan_on_tagged_pair_only(built):
 
 def test_no_fabric_config_in_configlets(built):
     forbidden = ("Loopback", "mlag", "MLAG", "router-id", "vrf instance", "neighbor", "vxlan source-interface",
-                 "vxlan vrf", "ip virtual-router mac-address", "hostname", "Port-Channel", "Ethernet")
+                 "vxlan vrf", "ip virtual-router mac-address", "hostname", "Port-Channel", "Ethernet",
+                 "route-target import", "route-target export", "redistribute connected", "rd 10.250.0.1:5")
     for name, leaf in built.items():
         for text in forbidden:
             assert text not in leaf, "%s renders %r" % (name, text)

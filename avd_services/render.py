@@ -7,13 +7,21 @@ mirror and the services. Only the service slice is kept:
     vlan_interfaces             the repo's SVIs
     vxlan_interface.vxlan.vlans VLAN-to-VNI maps for the repo's VLAN ids
     router_bgp.as / .vlans      the EVPN VLAN blocks for the repo's VLAN ids
+    router_bgp.vrfs[].networks  `network <subnet>` for each SVI on the leaf,
+                                which is how the fabric's VRFs advertise
+                                subnets (VRF default excepted)
 
 Underlay, MLAG, VRF definitions, the VXLAN source interface and every other
 key are dropped, so the configlet sits beside the existing leaf config and
 never restates it. eos_cli_config_gen then renders the slice to EOS CLI.
+
+EVPN scheme, both DCs: RD ``<router-id>:<vlan id>``, route-target both
+``<l2 vni>:<vlan id>``. A service without rd_override / rt_override gets
+them from this scheme.
 """
 
 import copy
+import ipaddress
 
 from .services import dc_tenants, service_vlan_ids
 
@@ -37,6 +45,12 @@ def avd_inputs(host_vars):
     """
     inputs = {key: copy.deepcopy(value) for key, value in host_vars.items() if not str(key).startswith(("cv_", "inventory_"))}
     inputs.pop("data_center", None)
+    for tenant in inputs.get("tenants") or []:
+        services = list(tenant.get("l2vlans") or [])
+        for vrf in tenant.get("vrfs") or []:
+            services.extend(vrf.get("svis") or [])
+        for service in services:
+            apply_evpn_scheme(service)
     for group in ((inputs.get("l3leaf") or {}).get("node_groups") or []):
         node_filter = group.setdefault("filter", {})
         tags = list(node_filter.get("tags") or [])
@@ -44,6 +58,35 @@ def avd_inputs(host_vars):
             tags.append(group.get("group"))
         node_filter["tags"] = tags
     return inputs
+
+
+def evpn_scheme(service):
+    """``(rd_override, rt_override)`` the fabric scheme gives one service."""
+    vlan_id = service.get("id")
+    vni = service.get("vni_override")
+    return vlan_id, ("%s:%s" % (vni, vlan_id) if vni is not None else None)
+
+
+def apply_evpn_scheme(service):
+    rd_override, rt_override = evpn_scheme(service)
+    service.setdefault("rd_override", rd_override)
+    if rt_override is not None:
+        service.setdefault("rt_override", rt_override)
+
+
+def _svi_networks(svis):
+    """``[{name, networks}]`` per VRF for the SVIs on one leaf."""
+    by_vrf = {}
+    for svi in svis:
+        vrf = svi.get("vrf")
+        address = svi.get("ip_address_virtual")
+        if not vrf or vrf == "default" or not address:
+            continue
+        prefix = str(ipaddress.ip_interface(address).network)
+        networks = by_vrf.setdefault(vrf, [])
+        if prefix not in networks:
+            networks.append(prefix)
+    return [{"name": vrf, "networks": [{"prefix": p} for p in prefixes]} for vrf, prefixes in sorted(by_vrf.items())]
 
 
 def slice_services(structured_config, vlan_ids, svi_ids):
@@ -62,8 +105,13 @@ def slice_services(structured_config, vlan_ids, svi_ids):
             result["vxlan_interface"] = {name: {"vxlan": {"vlans": maps}}}
     router_bgp = structured_config.get("router_bgp") or {}
     bgp_vlans = [vlan for vlan in router_bgp.get("vlans") or [] if vlan.get("id") in vlan_ids]
-    if bgp_vlans:
-        result["router_bgp"] = {"as": router_bgp.get("as"), "vlans": bgp_vlans}
+    bgp_vrfs = _svi_networks(svis)
+    if bgp_vlans or bgp_vrfs:
+        result["router_bgp"] = {"as": router_bgp.get("as")}
+        if bgp_vlans:
+            result["router_bgp"]["vlans"] = bgp_vlans
+        if bgp_vrfs:
+            result["router_bgp"]["vrfs"] = bgp_vrfs
     return result
 
 

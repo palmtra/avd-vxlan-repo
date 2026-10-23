@@ -44,29 +44,42 @@ python -m avd_services build          # renders intended/ (all DCs, or --dc lisl
 ```
 
 How it renders: AVD `eos_designs` builds each leaf's full structured config from
-the fabric facts plus the services. Only `vlans`, `vlan_interfaces`,
-`vxlan_interface.vxlan.vlans` and `router_bgp.as/vlans` for this repo's VLAN ids
-are kept. AVD `eos_cli_config_gen` renders that slice. Example (an SVI on every leaf pair):
+the fabric facts plus the services. It keeps only these parts for this repo's VLAN ids:
+
+- `vlans`
+- `vlan_interfaces`
+- `vxlan_interface.vxlan.vlans`
+- `router_bgp.as/vlans`
+- for each SVI on the leaf, `network <subnet>` under its VRF
+
+AVD `eos_cli_config_gen` renders that slice.
+
+EVPN scheme (both DCs): RD `<router-id>:<vlan id>`, `route-target both
+<l2 vni>:<vlan id>`. VRFs and their L3 VNIs already exist and are not rendered.
+
+Example: an anycast gateway on fnts-chi01-aggacc-sw05.
 
 ```
-vlan 100
-   name WEB
+vlan 1500
+   name CUST_APP
 !
-interface Vlan100
-   description WEB
+interface Vlan1500
+   description CUST_APP
    no shutdown
    mtu 9214
-   vrf PROD
-   ip address virtual 10.100.0.1/24
+   vrf v0000001a
+   ip address virtual 10.150.0.1/24
 !
 interface Vxlan1
-   vxlan vlan 100 vni 20100
+   vxlan vlan 1500 vni 21500
 !
-router bgp 65101
-   vlan 100
-      rd 10.250.0.1:100
-      route-target both 50001:100
+router bgp 4200000203
+   vlan 1500
+      rd 66.180.0.23:1500
+      route-target both 21500:1500
       redistribute learned
+   vrf v0000001a
+      network 10.150.0.0/24
 ```
 
 ## Service rules (`check`)
@@ -77,7 +90,8 @@ router bgp 65101
 | `tags` = leaf pairs (node groups in `<DC>_FABRIC.yml`) | places the VLAN on the pairs with endpoints or the gateway |
 | SVI: `enabled: true`, `ip_address_virtual` with prefix, no secondaries, no DHCP relay, no other keys | anycast gateway only (answers D4, D9) |
 | `mtu` 68 to 9214 | legacy MTU kept, capped at the EOS SVI maximum |
-| `rd_override` is a number, not a full RD | the leaf router-id stays the RD admin field |
+| `rd_override` is a number, not a full RD; RD/RT differing from the scheme is a warning | the leaf router-id stays the RD admin field |
+| SVI in VRF default is a warning | its subnet gets no `network` statement |
 | VRF keys limited to `name`, `vrf_vni`, `vrf_id`, `description`, `svis` | VRFs exist on the fabric and are never rendered |
 | One entry per VLAN, except centralized anycast: SVI on the gateway pair plus an `l2vlan` with the same name and VNI on the other pairs, no pair in both | centralized vs distributed anycast |
 | VLAN id 2 to 4092 | 4093/4094 are AVD's MLAG VLANs |
@@ -105,12 +119,10 @@ Deploy refuses to run while a DC's `_fabric_facts_verified` is false.
 
 ## Before the first real deploy
 
-- Replace the placeholders in `group_vars/<DC>_FABRIC.yml` with production values:
-  leaf pairs as node groups, `bgp_as`, and each leaf's Loopback0 as
-  `loopback_ipv4_address`. Then set `_fabric_facts_verified: true`.
+- Lisle fabric facts are production. For Omaha, replace the placeholders in
+  `group_vars/OMAHA_FABRIC.yml` with the leaf pairs as node groups, `bgp_as`, and each
+  leaf's Loopback0 as `loopback_ipv4_address`. Then set `_fabric_facts_verified: true`.
 - Fill `vni_ranges.yml` (same values as vxlan-migration).
-- Confirm the fabric's EVPN VLAN RD/RT scheme. The migration sets `rd_override` and
-  `rt_override` from it.
 - Confirm the fabric config is in Static Configuration Studio and that the
   `hostname:` tag query matches the leaves. Otherwise set
   `cv_device_tag_query: "device:{serial_number}"` and add `serial_number` per leaf in

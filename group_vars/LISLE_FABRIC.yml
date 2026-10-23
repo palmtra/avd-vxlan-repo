@@ -1,6 +1,6 @@
 ---
 # -----------------------------------------------------------------------------
-# Lisle fabric facts, mirrored from production. NOT rendered, NOT deployed.
+# Lisle (chi01) fabric facts, mirrored from production. NOT rendered, NOT deployed.
 #
 # AVD needs a fabric to place network services on. Only the service keys of
 # its output (VLANs, SVIs, VXLAN VLAN-to-VNI maps, router bgp vlan blocks) go
@@ -8,18 +8,16 @@
 # shows up in those keys:
 #   - loopback_ipv4_address  router-id, the admin field of each VLAN's RD
 #   - bgp_as                 the `router bgp <asn>` line the VLAN blocks sit in
-# The RD/RT scheme is not set here: every service carries vni_override, and
-# then AVD takes RD and RT from the service (rd_override / rt_override, set by
-# the migration from the fabric's scheme) or defaults to <router-id>:<vni> and
-# <vni>:<vni>.
+# EVPN VLAN scheme (both DCs): RD <router-id>:<vlan id>, route-target both
+# <l2 vni>:<vlan id>. The render applies it to every service (rd_override /
+# rt_override); see avd_services/render.py.
 # Pools, MLAG interfaces and the virtual router MAC must be present for AVD to
 # run but never reach a device.
 #
-# PLACEHOLDERS: the values below are documentation addresses and private ASNs.
-# Replace them with the production values, then set _fabric_facts_verified to
-# true. Deploy refuses to run for this DC until then.
+# Production values (bgp_as, Loopback0 per leaf). The pools, MLAG interfaces
+# and virtual router MAC below are filler that never reaches a device.
 # -----------------------------------------------------------------------------
-_fabric_facts_verified: false
+_fabric_facts_verified: true
 data_center: lisle
 
 fabric_name: LISLE
@@ -35,13 +33,41 @@ l3leaf:
     virtual_router_mac_address: "00:1c:73:00:00:99"
     mlag_interfaces: [Ethernet47, Ethernet48]
   node_groups:
-    # One node group per leaf pair. The group name is the tag services use.
-    - group: LIS_LEAF_1
-      bgp_as: "65101"
+    # One node group per MLAG leaf pair. The group name is the tag services
+    # use. ASNs are asplain; EOS takes either notation for the same AS.
+    - group: BLF01_02            # border leaves: firewalls / external gateways
+      bgp_as: "20034"
       nodes:
-        - name: eos-leaf-lis-01
+        - name: chi01-blf01
           id: 1
-          loopback_ipv4_address: 192.0.2.1
-        - name: eos-leaf-lis-02
+          loopback_ipv4_address: 66.180.0.17
+        - name: chi01-blf02
           id: 2
-          loopback_ipv4_address: 192.0.2.2
+          loopback_ipv4_address: 66.180.0.18
+    - group: AGGACC01_02
+      bgp_as: "4200000202"
+      nodes:
+        - name: fnts-chi01-aggacc-sw01
+          id: 3
+          loopback_ipv4_address: 66.180.0.21
+        - name: fnts-chi01-aggacc-sw02
+          id: 4
+          loopback_ipv4_address: 66.180.0.22
+    - group: AGGACC05_06
+      bgp_as: "4200000203"     # 64086.60107 in asdot
+      nodes:
+        - name: fnts-chi01-aggacc-sw05
+          id: 5
+          loopback_ipv4_address: 66.180.0.23
+        - name: fnts-chi01-aggacc-sw06
+          id: 6
+          loopback_ipv4_address: 66.180.0.24
+    - group: AGGACC11_12
+      bgp_as: "4200000204"
+      nodes:
+        - name: fnts-chi01-aggacc-sw11
+          id: 7
+          loopback_ipv4_address: 66.180.0.25
+        - name: fnts-chi01-aggacc-sw12
+          id: 8
+          loopback_ipv4_address: 66.180.0.26

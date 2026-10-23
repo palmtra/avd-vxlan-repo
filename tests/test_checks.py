@@ -61,6 +61,30 @@ def test_rule_violations(fixture_repo, mutate, expected):
     assert any(expected in message for message in errors), errors
 
 
+def _warnings(repo, mutate):
+    services_file = repo / "group_vars" / "LISLE_SERVICES.yml"
+    services = load_yaml(services_file)
+    mutate(services["tenants"])
+    services_file.write_text(yaml.safe_dump(services))
+    ranges = load_yaml(repo / "vni_ranges.yml")
+    hostvars, _ = load_inventory(repo)
+    findings = run_checks(hostvars, hosts_by_dc(hostvars), ranges["vni_ranges"], ranges["vni_default_pool"])
+    return [f.message for f in findings if f.level == "warning"]
+
+
+def test_fixture_has_no_warnings(fixture_repo):
+    assert _warnings(fixture_repo, lambda t: None) == []
+
+
+@pytest.mark.parametrize("mutate, expected", [
+    (lambda t: _svi(t).update(rt_override="50001:100"), "rt_override '50001:100' is not the fabric scheme (20100:100)"),
+    (lambda t: _svi(t).update(rd_override=1100), "rd_override 1100 is not the fabric scheme (<router-id>:100)"),
+    (lambda t: t[0]["vrfs"][0].update(name="default"), "SVI in VRF default: its subnet gets no network statement"),
+])
+def test_scheme_and_default_vrf_warnings(fixture_repo, mutate, expected):
+    assert any(expected in message for message in _warnings(fixture_repo, mutate))
+
+
 def test_vni_ranges_overlap_and_malformed():
     findings = check_vni_ranges({
         "lisle": {"internal": {"start": 100, "end": 200}, "customer": {"start": 150, "end": 300}},
