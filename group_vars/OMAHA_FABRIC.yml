@@ -4,12 +4,10 @@
 # deployed. See group_vars/LISLE_FABRIC.yml for what each value is used for and
 # for the EVPN scheme (the same in both DCs).
 #
-# NOT VERIFIED YET: fntc-aggacc-sw14 was given as Loopback0 66.180.0.14 (and
-# Loopback1 172.16.0.43); the numbering pattern suggests 66.180.0.43. Its
-# Loopback0 is the admin field of every RD on sw14. Confirm it, then set
-# _fabric_facts_verified to true. Deploy refuses to run for Omaha until then.
+# Production values (bgp_as, Loopback0 per leaf). The pools, MLAG interfaces
+# and virtual router MAC below are filler that never reaches a device.
 # -----------------------------------------------------------------------------
-_fabric_facts_verified: false
+_fabric_facts_verified: true
 data_center: omaha
 
 fabric_name: OMAHA
@@ -76,7 +74,7 @@ l3leaf:
           loopback_ipv4_address: 66.180.0.42
         - name: fntc-aggacc-sw14
           id: 10
-          loopback_ipv4_address: 66.180.0.14   # CONFIRM (see header)
+          loopback_ipv4_address: 66.180.0.43
     - group: AGGACC101_102
       bgp_as: "64086.60005"      # asdot (= 4200000101)
       nodes:

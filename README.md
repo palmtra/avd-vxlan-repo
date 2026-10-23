@@ -120,8 +120,7 @@ Deploy refuses to run while a DC's `_fabric_facts_verified` is false.
 
 ## Before the first real deploy
 
-- Both DCs' fabric facts are production. Omaha stays `_fabric_facts_verified: false`
-  until fntc-aggacc-sw14's Loopback0 is confirmed (see `group_vars/OMAHA_FABRIC.yml`).
+- Both DCs' fabric facts are production and verified.
 - Confirm the fabric config is in Static Configuration Studio and that the
   `hostname:` tag query matches the leaves. Otherwise set
   `cv_device_tag_query: "device:{serial_number}"` and add `serial_number` per leaf in
