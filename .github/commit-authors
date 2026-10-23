@@ -1,0 +1,7 @@
+# People who must be credited on every new commit: as the author, or in a
+# "Co-authored-by: Name <email>" trailer. One email per line.
+# .github/workflows/commit-authors.yml fails a push or PR with a commit that
+# credits nobody here (for example, a commit authored only by Claude).
+stynhaq@live.com
+# GitHub web edits and merges use the account's noreply address.
+3902460+AustinNwaka@users.noreply.github.com
