@@ -13,6 +13,9 @@ data_center: omaha
 fabric_name: OMAHA
 type: l3leaf
 
+# Leaf pair external gateways attach to (placeholder until the border pair is in).
+_external_gateway_pair: OMA_LEAF_1
+
 l3leaf:
   defaults:
     loopback_ipv4_pool: 198.51.100.0/26

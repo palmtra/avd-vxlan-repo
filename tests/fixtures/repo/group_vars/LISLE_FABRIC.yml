@@ -3,6 +3,7 @@ _fabric_facts_verified: true
 data_center: lisle
 fabric_name: LISLE
 type: l3leaf
+_external_gateway_pair: PAIR1
 l3leaf:
   defaults:
     loopback_ipv4_pool: 192.0.2.0/26

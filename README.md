@@ -16,7 +16,7 @@ group_vars/
   OMAHA_FABRIC.yml
   OMAHA_SERVICES.yml
   all.yml                     CVaaS settings
-vni_ranges.yml                per-DC internal / customer VNI ranges
+vni_ranges.yml                per-DC VNI ranges: internal / external customers
 avd_services/                 check, build (pyavd), deploy (pyavd CloudVision workflow)
 intended/configs/<leaf>.cfg   rendered configlets, committed: the PR diff is the CLI change
 playbooks/build.yml           AAP wrapper for build
@@ -86,12 +86,13 @@ router bgp 4200000203
 
 | Rule | Why |
 | --- | --- |
-| `vni_override` required, inside the DC's range for `_migration.vni_pool`, unique in the DC, not in another DC's range, not a VRF's L3 VNI | VNIs are allocated by the migration, per DC |
+| `vni_override` required, inside the DC's range for `_migration.customer_type` (Lisle 20000 internal / 22000 external, Omaha 10000 / 11000), unique in the DC, not in another DC's range, not a VRF's L3 VNI | VNIs are allocated by the migration, per DC |
+| External gateway VLAN (`gateway_mode: external`) is on the DC's `_external_gateway_pair` (border leaves), unless `_migration.external_gateway_pair` overrides it | the firewall's leaf pair must carry the VLAN |
 | `tags` = leaf pairs (node groups in `<DC>_FABRIC.yml`) | places the VLAN on the pairs with endpoints or the gateway |
 | SVI: `enabled: true`, `ip_address_virtual` with prefix, no secondaries, no DHCP relay, no other keys | anycast gateway only (answers D4, D9) |
 | `mtu` 68 to 9214 | legacy MTU kept, capped at the EOS SVI maximum |
 | `rd_override` is a number, not a full RD; RD/RT differing from the scheme is a warning | the leaf router-id stays the RD admin field |
-| SVI in VRF default is a warning | its subnet gets no `network` statement |
+| SVI in VRF default is refused | subnets are advertised with `network` per VRF; the fabric never redistributes connected |
 | VRF keys limited to `name`, `vrf_vni`, `vrf_id`, `description`, `svis` | VRFs exist on the fabric and are never rendered |
 | One entry per VLAN, except centralized anycast: SVI on the gateway pair plus an `l2vlan` with the same name and VNI on the other pairs, no pair in both | centralized vs distributed anycast |
 | VLAN id 2 to 4092 | 4093/4094 are AVD's MLAG VLANs |
@@ -122,7 +123,6 @@ Deploy refuses to run while a DC's `_fabric_facts_verified` is false.
 - Lisle fabric facts are production. For Omaha, replace the placeholders in
   `group_vars/OMAHA_FABRIC.yml` with the leaf pairs as node groups, `bgp_as`, and each
   leaf's Loopback0 as `loopback_ipv4_address`. Then set `_fabric_facts_verified: true`.
-- Fill `vni_ranges.yml` (same values as vxlan-migration).
 - Confirm the fabric config is in Static Configuration Studio and that the
   `hostname:` tag query matches the leaves. Otherwise set
   `cv_device_tag_query: "device:{serial_number}"` and add `serial_number` per leaf in

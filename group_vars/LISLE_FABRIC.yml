@@ -23,6 +23,11 @@ data_center: lisle
 fabric_name: LISLE
 type: l3leaf
 
+# Leaf pair external gateways (firewalls) attach to. A VLAN whose gateway
+# stays outside the fabric must be on it; a service that differs sets
+# _migration.external_gateway_pair (manual override).
+_external_gateway_pair: BLF01_02
+
 l3leaf:
   defaults:
     # Required by AVD, not rendered.
@@ -34,7 +39,7 @@ l3leaf:
     mlag_interfaces: [Ethernet47, Ethernet48]
   node_groups:
     # One node group per MLAG leaf pair. The group name is the tag services
-    # use. ASNs are asplain; EOS takes either notation for the same AS.
+    # use. bgp_as is written as the switch shows it (asplain or asdot).
     - group: BLF01_02            # border leaves: firewalls / external gateways
       bgp_as: "20034"
       nodes:
@@ -54,7 +59,7 @@ l3leaf:
           id: 4
           loopback_ipv4_address: 66.180.0.22
     - group: AGGACC05_06
-      bgp_as: "4200000203"     # 64086.60107 in asdot
+      bgp_as: "64086.60107"      # sw05/06 run `bgp asn notation asdot` (= 4200000203)
       nodes:
         - name: fnts-chi01-aggacc-sw05
           id: 5

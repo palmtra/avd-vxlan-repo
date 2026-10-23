@@ -28,7 +28,7 @@ def _load(root, only_dc=None):
             sys.exit("unknown data center %r (known: %s)" % (only_dc, ", ".join(sorted(dcs))))
         dcs = {only_dc: dcs[only_dc]}
     vni = load_yaml(root / "vni_ranges.yml")
-    return hostvars, dcs, vni.get("vni_ranges") or {}, vni.get("vni_default_pool") or "customer"
+    return hostvars, dcs, vni.get("vni_ranges") or {}, vni.get("vni_default_customer_type") or "external"
 
 
 def _report(findings):

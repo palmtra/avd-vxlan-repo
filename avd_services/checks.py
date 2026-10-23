@@ -13,7 +13,7 @@ from .services import dc_tenants, iter_services, node_groups
 
 Finding = namedtuple("Finding", "level dc where message")
 
-VNI_POOLS = ("internal", "customer")
+VNI_POOLS = ("internal", "external")
 EOS_SVI_MTU_MAX = 9214
 VLAN_ID_MIN = 2
 VLAN_ID_MAX = 4092  # 4093/4094 are AVD's MLAG VLANs on every leaf pair.
@@ -25,8 +25,9 @@ SVI_KEYS = {
     "vni_override", "rt_override", "rd_override", "_migration",
 }
 L2VLAN_KEYS = {"id", "name", "tags", "vni_override", "rt_override", "rd_override", "_migration"}
-MIGRATION_KEYS = {"vni_pool", "gateway_mode", "source", "change", "notes"}
+MIGRATION_KEYS = {"customer_type", "gateway_mode", "external_gateway_pair", "source", "change", "notes"}
 GATEWAY_MODES = {"distributed_anycast", "centralized_anycast"}
+L2VLAN_GATEWAY_MODES = {"external"}
 
 
 def _int(value):
@@ -95,6 +96,9 @@ def check_fabric_facts(dc, hostvars, hosts):
                 ))
             if node.get("name") not in hosts:
                 findings.append(Finding("error", dc, "node %s" % node.get("name"), "node_group member is not in inventory.yml"))
+    external_pair = hostvars[hosts[0]].get("_external_gateway_pair")
+    if external_pair and str(external_pair) not in groups:
+        findings.append(Finding("error", dc, "_external_gateway_pair", "%r is not a node group in %s_FABRIC" % (external_pair, dc.upper())))
     if not hostvars[hosts[0]].get("_fabric_facts_verified"):
         findings.append(Finding("warning", dc, "%s_FABRIC" % dc.upper(), "fabric facts are placeholders (_fabric_facts_verified: false); deploy is blocked"))
     return findings
@@ -129,9 +133,9 @@ def _check_svi_gateway(dc, where, svi):
     return findings
 
 
-def _vni_pool(service, default_pool):
+def _customer_type(service, default_pool):
     migration = service["data"].get("_migration") or {}
-    return str(migration.get("vni_pool") or default_pool or "customer").strip().lower()
+    return str(migration.get("customer_type") or default_pool or "external").strip().lower()
 
 
 def check_services(dc, hostvars, hosts, vni_ranges, default_pool):
@@ -140,6 +144,7 @@ def check_services(dc, hostvars, hosts, vni_ranges, default_pool):
         return findings
     tenants = dc_tenants(hostvars, hosts)
     groups = set(node_groups(hostvars[hosts[0]]))
+    external_pair = hostvars[hosts[0]].get("_external_gateway_pair")
     dc_ranges = (vni_ranges or {}).get(dc) or {}
     other_spans = [
         (_vni_range(entry), "%s/%s" % (other_dc, pool))
@@ -180,11 +185,26 @@ def check_services(dc, hostvars, hosts, vni_ranges, default_pool):
             if str(tag) not in groups:
                 findings.append(Finding("error", dc, where, "tag %r is not a leaf pair in %s_FABRIC (%s)" % (tag, dc.upper(), ", ".join(sorted(groups)))))
 
+        migration = data.get("_migration") or {}
+        mode = migration.get("gateway_mode")
         if kind == "svi":
             findings.extend(_check_svi_gateway(dc, where, data))
-            mode = (data.get("_migration") or {}).get("gateway_mode")
             if mode is not None and mode not in GATEWAY_MODES:
                 findings.append(Finding("error", dc, where, "gateway_mode %r must be one of %s" % (mode, ", ".join(sorted(GATEWAY_MODES)))))
+        elif mode is not None and mode not in L2VLAN_GATEWAY_MODES:
+            findings.append(Finding("error", dc, where, "l2vlan gateway_mode %r must be external (or unset for the L2 side of centralized anycast)" % mode))
+        elif mode == "external":
+            gateway_pair = migration.get("external_gateway_pair") or external_pair
+            if not gateway_pair:
+                findings.append(Finding("error", dc, where, "external gateway VLAN needs _migration.external_gateway_pair (no _external_gateway_pair for %s)" % dc))
+            elif str(gateway_pair) not in groups:
+                findings.append(Finding("error", dc, where, "external_gateway_pair %r is not a leaf pair" % gateway_pair))
+            elif str(gateway_pair) not in [str(tag) for tag in tags or []]:
+                findings.append(Finding(
+                    "error", dc, where,
+                    "external gateway VLAN %d is not on %s, the pair its gateway attaches to; add the tag, "
+                    "or set _migration.external_gateway_pair (manual override)" % (vlan_id, gateway_pair),
+                ))
 
         if ":" in str(data.get("rd_override") or ""):
             findings.append(Finding(
@@ -199,16 +219,20 @@ def check_services(dc, hostvars, hosts, vni_ranges, default_pool):
         if data.get("rt_override") is not None and scheme_rt and str(data.get("rt_override")) != scheme_rt:
             findings.append(Finding("warning", dc, where, "rt_override %r is not the fabric scheme (%s)" % (data.get("rt_override"), scheme_rt)))
         if kind == "svi" and str(service["vrf"]) == "default":
-            findings.append(Finding("warning", dc, where, "SVI in VRF default: its subnet gets no network statement from this repo"))
+            findings.append(Finding(
+                "error", dc, where,
+                "SVI in VRF default: its subnet would not be advertised (network statements are per VRF; "
+                "the fabric does not redistribute connected)",
+            ))
 
         vni = _int(data.get("vni_override"))
         if vni is None or not 1 <= vni <= 16777215:
             findings.append(Finding("error", dc, where, "vni_override is required (1-16777215); the migration allocates it"))
             continue
         by_vni.setdefault(vni, set()).add(vlan_id)
-        pool = _vni_pool(service, default_pool)
+        pool = _customer_type(service, default_pool)
         if pool not in VNI_POOLS:
-            findings.append(Finding("error", dc, where, "vni_pool %r must be internal or customer" % pool))
+            findings.append(Finding("error", dc, where, "customer_type %r must be internal or external" % pool))
             continue
         span = _vni_range(dc_ranges.get(pool))
         if span and not span[0] <= vni <= span[1]:

@@ -17,7 +17,7 @@ def _run(repo, mutate_services=None, mutate_ranges=None):
     if mutate_ranges:
         mutate_ranges(ranges["vni_ranges"])
     hostvars, _ = load_inventory(repo)
-    findings = run_checks(hostvars, hosts_by_dc(hostvars), ranges["vni_ranges"], ranges["vni_default_pool"])
+    findings = run_checks(hostvars, hosts_by_dc(hostvars), ranges["vni_ranges"], ranges["vni_default_customer_type"])
     return [f.message for f in findings if f.level == "error"]
 
 
@@ -30,8 +30,8 @@ def test_fixture_is_clean(fixture_repo):
 
 
 @pytest.mark.parametrize("mutate, expected", [
-    (lambda t: _svi(t).update(vni_override=30100), "VNI 30100 is outside lisle customer range"),
-    (lambda t: _svi(t).update(vni_override=40100), "VNI 40100 is in omaha/customer's range"),
+    (lambda t: _svi(t).update(vni_override=30100), "VNI 30100 is outside lisle external range"),
+    (lambda t: _svi(t).update(vni_override=40100), "VNI 40100 is in omaha/external's range"),
     (lambda t: _svi(t).update(tags=["PAIR9"]), "tag 'PAIR9' is not a leaf pair"),
     (lambda t: _svi(t).update(tags=[]), "tags must list the leaf pairs"),
     (lambda t: _svi(t).update(ip_address_virtual_secondaries=["10.1.1.1/24"]), "key 'ip_address_virtual_secondaries' is not allowed"),
@@ -49,7 +49,12 @@ def test_fixture_is_clean(fixture_repo):
     (lambda t: t[0]["vrfs"][0].update(route_target={"import": []}), "VRFs already exist and are not rendered"),
     (lambda t: _svi(t).update(id=4094), "VLAN id 4094 must be 2-4092"),
     (lambda t: _svi(t)["_migration"].update(gateway_mode="centralised"), "gateway_mode 'centralised'"),
-    (lambda t: _svi(t)["_migration"].update(vni_pool="shared"), "vni_pool 'shared'"),
+    (lambda t: _svi(t)["_migration"].update(customer_type="shared"), "customer_type 'shared'"),
+    (lambda t: t[0]["vrfs"][0].update(name="default"), "SVI in VRF default: its subnet would not be advertised"),
+    # External gateway VLAN 300 must sit on the border pair (PAIR1) unless overridden.
+    (lambda t: t[0]["l2vlans"][1].update(tags=["PAIR2"]), "external gateway VLAN 300 is not on PAIR1"),
+    (lambda t: t[0]["l2vlans"][1]["_migration"].update(external_gateway_pair="PAIR9"), "external_gateway_pair 'PAIR9' is not a leaf pair"),
+    (lambda t: t[0]["l2vlans"][1]["_migration"].update(gateway_mode="distributed_anycast"), "l2vlan gateway_mode 'distributed_anycast'"),
     # Centralized anycast pairing rules (VLAN 200: SVI on PAIR2, l2vlan on PAIR1).
     (lambda t: _svi(t, 1)["_migration"].update(gateway_mode="distributed_anycast"), "only for centralized_anycast"),
     (lambda t: t[0]["l2vlans"][0].update(tags=["PAIR1", "PAIR2"]), "get both the SVI and the l2vlan"),
@@ -68,7 +73,7 @@ def _warnings(repo, mutate):
     services_file.write_text(yaml.safe_dump(services))
     ranges = load_yaml(repo / "vni_ranges.yml")
     hostvars, _ = load_inventory(repo)
-    findings = run_checks(hostvars, hosts_by_dc(hostvars), ranges["vni_ranges"], ranges["vni_default_pool"])
+    findings = run_checks(hostvars, hosts_by_dc(hostvars), ranges["vni_ranges"], ranges["vni_default_customer_type"])
     return [f.message for f in findings if f.level == "warning"]
 
 
@@ -79,21 +84,27 @@ def test_fixture_has_no_warnings(fixture_repo):
 @pytest.mark.parametrize("mutate, expected", [
     (lambda t: _svi(t).update(rt_override="50001:100"), "rt_override '50001:100' is not the fabric scheme (20100:100)"),
     (lambda t: _svi(t).update(rd_override=1100), "rd_override 1100 is not the fabric scheme (<router-id>:100)"),
-    (lambda t: t[0]["vrfs"][0].update(name="default"), "SVI in VRF default: its subnet gets no network statement"),
 ])
-def test_scheme_and_default_vrf_warnings(fixture_repo, mutate, expected):
+def test_scheme_warnings(fixture_repo, mutate, expected):
     assert any(expected in message for message in _warnings(fixture_repo, mutate))
 
 
 def test_vni_ranges_overlap_and_malformed():
     findings = check_vni_ranges({
-        "lisle": {"internal": {"start": 100, "end": 200}, "customer": {"start": 150, "end": 300}},
-        "omaha": {"internal": {"start": 500, "end": 400}, "customer": None},
+        "lisle": {"internal": {"start": 100, "end": 200}, "external": {"start": 150, "end": 300}},
+        "omaha": {"internal": {"start": 500, "end": 400}, "external": None},
     })
     messages = [(f.level, f.message) for f in findings]
-    assert ("error", "ranges lisle/internal and lisle/customer overlap") in messages
+    assert ("error", "ranges lisle/internal and lisle/external overlap") in messages
     assert any(level == "error" and "malformed" in message for level, message in messages)
     assert any(level == "warning" and "not set" in message for level, message in messages)
+
+
+def test_external_gateway_override_moves_the_vlan(fixture_repo):
+    def override(tenants):
+        tenants[0]["l2vlans"][1].update(tags=["PAIR2"])
+        tenants[0]["l2vlans"][1]["_migration"]["external_gateway_pair"] = "PAIR2"
+    assert _run(fixture_repo, mutate_services=override) == []
 
 
 def test_fabric_facts_required(fixture_repo):

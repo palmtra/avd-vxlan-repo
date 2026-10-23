@@ -15,7 +15,7 @@ tenants:
             vni_override: 20100
             rd_override: 100
             rt_override: "20100:100"
-            _migration: {vni_pool: customer, gateway_mode: distributed_anycast}
+            _migration: {customer_type: external, gateway_mode: distributed_anycast}
           # Centralized anycast: gateway on PAIR2, L2 only on PAIR1.
           - id: 200
             name: APP
@@ -23,15 +23,16 @@ tenants:
             tags: [PAIR2]
             ip_address_virtual: 10.200.0.1/24
             vni_override: 10200
-            _migration: {vni_pool: internal, gateway_mode: centralized_anycast}
+            _migration: {customer_type: internal, gateway_mode: centralized_anycast}
     l2vlans:
       - id: 200
         name: APP
         tags: [PAIR1]
         vni_override: 10200
-        _migration: {vni_pool: internal}
-      # External gateway (firewall): L2 only.
+        _migration: {customer_type: internal}
+      # External gateway (firewall): L2 only, on the border pair (PAIR1).
       - id: 300
         name: FW_DMZ
         tags: [PAIR1]
         vni_override: 20300
+        _migration: {gateway_mode: external}

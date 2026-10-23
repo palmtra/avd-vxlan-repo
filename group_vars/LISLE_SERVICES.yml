@@ -8,17 +8,20 @@
 # configlets and the PR shows the exact CLI per leaf under intended/configs/.
 #
 # Rules (enforced by `python -m avd_services check`):
-#   - vni_override is required and must sit in this DC's range for _migration.vni_pool.
+#   - vni_override is required and must sit in this DC's range for
+#     _migration.customer_type: internal 20000+, external 22000+.
 #   - tags are leaf pairs (node groups in LISLE_FABRIC.yml) that carry the VLAN:
-#     pairs with endpoints, the gateway pair, and for an external gateway the
-#     pair the firewall attaches to (usually BLF01_02).
+#     pairs with endpoints, the gateway pair, and for an external gateway
+#     (gateway_mode: external) the pair the firewall attaches to: BLF01_02,
+#     or _migration.external_gateway_pair as a manual override.
 #   - SVIs use ip_address_virtual (anycast) only: no secondaries, no DHCP relay.
 #   - mtu at most 9214 (the EOS SVI maximum).
 #   - RD is <router-id>:<vlan id> and route-target both <l2 vni>:<vlan id>.
 #     The render fills rd_override / rt_override from that; a value that
 #     differs is a warning.
 #   - Each SVI's subnet gets `network <subnet>` under its VRF in router bgp
-#     on every leaf with the SVI (not for VRF default).
+#     on every leaf with the SVI. The fabric never redistributes connected,
+#     so an SVI in VRF default is refused.
 #   - VRFs already exist on the fabric. They are listed so AVD can place the
 #     SVI; the VRF itself is never rendered. vrf_vni must be the fabric value.
 #   - Centralized anycast: the SVI is tagged with the gateway pair and the same
@@ -41,7 +44,7 @@
 #               rd_override: 951
 #               rt_override: "20951:951"
 #               _migration:
-#                 vni_pool: customer
+#                 customer_type: internal
 #                 gateway_mode: distributed_anycast
 #                 source: legacy VLAN 951 on fnts-chi01-aggpe-ml01/02
 # -----------------------------------------------------------------------------

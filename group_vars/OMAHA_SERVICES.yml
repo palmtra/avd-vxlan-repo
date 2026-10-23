@@ -2,6 +2,7 @@
 # -----------------------------------------------------------------------------
 # Omaha network services owned by the VXLAN migration.
 # Same format and rules as group_vars/LISLE_SERVICES.yml. Tags are Omaha leaf
-# pairs (node groups in OMAHA_FABRIC.yml).
+# pairs (node groups in OMAHA_FABRIC.yml). VNIs: internal 10000+, external
+# customers 11000+.
 # -----------------------------------------------------------------------------
 tenants: []
