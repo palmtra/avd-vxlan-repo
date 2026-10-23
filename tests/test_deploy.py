@@ -59,5 +59,5 @@ def test_deploy_refuses_without_token(config_dir, monkeypatch):
 
 
 def test_deploy_refuses_placeholder_fabric(config_dir):
-    with pytest.raises(DeployError, match="placeholders"):
+    with pytest.raises(DeployError, match="not verified"):
         deploy("lisle", ["leaf1a"], config_dir, dict(SETTINGS, _fabric_facts_verified=False), change_name="t", token="x")

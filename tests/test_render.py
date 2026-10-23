@@ -105,7 +105,7 @@ def test_placeholder_banner(fixture_repo):
     path = fixture_repo / "group_vars" / "LISLE_FABRIC.yml"
     path.write_text(path.read_text().replace("_fabric_facts_verified: true", "_fabric_facts_verified: false"))
     assert main(["--root", str(fixture_repo), "build"]) == 0
-    assert "PLACEHOLDER FABRIC FACTS" in (fixture_repo / "intended" / "configs" / "leaf1a.cfg").read_text()
+    assert "FABRIC FACTS NOT VERIFIED" in (fixture_repo / "intended" / "configs" / "leaf1a.cfg").read_text()
 
 
 def test_build_fails_on_rule_violation(fixture_repo, capsys):

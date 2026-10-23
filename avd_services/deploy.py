@@ -73,7 +73,7 @@ def deploy(dc, hosts, config_dir, settings, change_name, description="", dry_run
     if not token:
         raise DeployError("CV_TOKEN is not set (CVaaS RW service-account token)")
     if not settings.get("_fabric_facts_verified"):
-        raise DeployError("%s fabric facts are placeholders; set _fabric_facts_verified after checking them" % dc)
+        raise DeployError("%s fabric facts are not verified; set _fabric_facts_verified after checking them" % dc)
 
     manifest = AvdManifest.from_dict(build_manifest(dc, hosts, config_dir, settings, hostvars))
     cloudvision = CloudVision(

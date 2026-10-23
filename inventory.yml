@@ -13,7 +13,7 @@
 # placed on leaf pairs with `tags: [<node group>]`.
 #
 # Only VTEP leaves are listed: non-VTEP switches and the legacy MLS get no
-# AVD config. Lisle is production; Omaha hosts are placeholders.
+# AVD config. Both DCs are production.
 #
 # The two DCs are isolated (no multisite). They are built separately and
 # deployed with separate change controls.
@@ -49,5 +49,17 @@ all:
             OMAHA_LEAVES:
     OMAHA_LEAVES:
       hosts:
-        eos-leaf-oma-01:
-        eos-leaf-oma-02:
+        oma01-blf01:
+        oma01-blf02:
+        fntc-aggacc-sw01:
+        fntc-aggacc-sw02:
+        fntc-aggacc-sw05:
+        fntc-aggacc-sw06:
+        fntc-aggacc-sw11:
+        fntc-aggacc-sw12:
+        fntc-aggacc-sw13:
+        fntc-aggacc-sw14:
+        fntc-aggacc-sw101:
+        fntc-aggacc-sw102:
+        oma-ce-sw01:
+        oma-ce-sw02:

@@ -30,7 +30,7 @@ HEADER = (
     "! Rendered by palmtra/avd-vxlan-repo with AVD {avd_version}. Do not edit in CloudVision:\n"
     "! change group_vars/{group}_SERVICES.yml and open a PR.\n"
 )
-PLACEHOLDER_BANNER = "! PLACEHOLDER FABRIC FACTS: RDs and the BGP ASN below are not production values.\n"
+PLACEHOLDER_BANNER = "! FABRIC FACTS NOT VERIFIED (_fabric_facts_verified: false): check the RDs and BGP ASN below.\n"
 
 
 class RenderError(Exception):

@@ -1,11 +1,13 @@
 ---
 # -----------------------------------------------------------------------------
-# Omaha fabric facts, mirrored from production. NOT rendered, NOT deployed.
-# See group_vars/LISLE_FABRIC.yml for what each value is used for and for the
-# EVPN scheme (the same in both DCs).
+# Omaha (fntc / oma) fabric facts, mirrored from production. NOT rendered, NOT
+# deployed. See group_vars/LISLE_FABRIC.yml for what each value is used for and
+# for the EVPN scheme (the same in both DCs).
 #
-# PLACEHOLDERS: replace with production values, then set
-# _fabric_facts_verified to true. Deploy refuses to run for this DC until then.
+# NOT VERIFIED YET: fntc-aggacc-sw14 was given as Loopback0 66.180.0.14 (and
+# Loopback1 172.16.0.43); the numbering pattern suggests 66.180.0.43. Its
+# Loopback0 is the admin field of every RD on sw14. Confirm it, then set
+# _fabric_facts_verified to true. Deploy refuses to run for Omaha until then.
 # -----------------------------------------------------------------------------
 _fabric_facts_verified: false
 data_center: omaha
@@ -13,11 +15,14 @@ data_center: omaha
 fabric_name: OMAHA
 type: l3leaf
 
-# Leaf pair external gateways attach to (placeholder until the border pair is in).
-_external_gateway_pair: OMA_LEAF_1
+# Leaf pair external gateways (firewalls) attach to. A VLAN whose gateway
+# stays outside the fabric must be on it; a service that differs sets
+# _migration.external_gateway_pair (manual override).
+_external_gateway_pair: BLF01_02
 
 l3leaf:
   defaults:
+    # Required by AVD, not rendered.
     loopback_ipv4_pool: 198.51.100.0/26
     vtep_loopback_ipv4_pool: 198.51.100.64/26
     mlag_peer_ipv4_pool: 198.51.100.128/26
@@ -25,12 +30,68 @@ l3leaf:
     virtual_router_mac_address: "00:1c:73:00:00:99"
     mlag_interfaces: [Ethernet47, Ethernet48]
   node_groups:
-    - group: OMA_LEAF_1
-      bgp_as: "65201"
+    # One node group per MLAG leaf pair. The group name is the tag services
+    # use. bgp_as is written as the switch shows it (asplain or asdot).
+    - group: BLF01_02            # border leaves: firewalls / external gateways
+      bgp_as: "30452"
       nodes:
-        - name: eos-leaf-oma-01
+        - name: oma01-blf01
           id: 1
-          loopback_ipv4_address: 198.51.100.1
-        - name: eos-leaf-oma-02
+          loopback_ipv4_address: 66.180.0.3
+        - name: oma01-blf02
           id: 2
-          loopback_ipv4_address: 198.51.100.2
+          loopback_ipv4_address: 66.180.0.4
+    - group: AGGACC01_02
+      bgp_as: "4200000102"
+      nodes:
+        - name: fntc-aggacc-sw01
+          id: 3
+          loopback_ipv4_address: 66.180.0.10
+        - name: fntc-aggacc-sw02
+          id: 4
+          loopback_ipv4_address: 66.180.0.11
+    - group: AGGACC05_06
+      bgp_as: "4200000103"
+      nodes:
+        - name: fntc-aggacc-sw05
+          id: 5
+          loopback_ipv4_address: 66.180.0.12
+        - name: fntc-aggacc-sw06
+          id: 6
+          loopback_ipv4_address: 66.180.0.13
+    - group: AGGACC11_12
+      bgp_as: "4200000104"
+      nodes:
+        - name: fntc-aggacc-sw11
+          id: 7
+          loopback_ipv4_address: 66.180.0.44
+        - name: fntc-aggacc-sw12
+          id: 8
+          loopback_ipv4_address: 66.180.0.45
+    - group: AGGACC13_14
+      bgp_as: "4200000105"
+      nodes:
+        - name: fntc-aggacc-sw13
+          id: 9
+          loopback_ipv4_address: 66.180.0.42
+        - name: fntc-aggacc-sw14
+          id: 10
+          loopback_ipv4_address: 66.180.0.14   # CONFIRM (see header)
+    - group: AGGACC101_102
+      bgp_as: "64086.60005"      # asdot (= 4200000101)
+      nodes:
+        - name: fntc-aggacc-sw101
+          id: 11
+          loopback_ipv4_address: 66.180.0.40
+        - name: fntc-aggacc-sw102
+          id: 12
+          loopback_ipv4_address: 66.180.0.41
+    - group: CE01_02
+      bgp_as: "4200000106"
+      nodes:
+        - name: oma-ce-sw01
+          id: 13
+          loopback_ipv4_address: 66.180.0.46
+        - name: oma-ce-sw02
+          id: 14
+          loopback_ipv4_address: 66.180.0.47

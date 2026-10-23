@@ -100,7 +100,7 @@ def check_fabric_facts(dc, hostvars, hosts):
     if external_pair and str(external_pair) not in groups:
         findings.append(Finding("error", dc, "_external_gateway_pair", "%r is not a node group in %s_FABRIC" % (external_pair, dc.upper())))
     if not hostvars[hosts[0]].get("_fabric_facts_verified"):
-        findings.append(Finding("warning", dc, "%s_FABRIC" % dc.upper(), "fabric facts are placeholders (_fabric_facts_verified: false); deploy is blocked"))
+        findings.append(Finding("warning", dc, "%s_FABRIC" % dc.upper(), "fabric facts not verified (_fabric_facts_verified: false); deploy is blocked"))
     return findings
 
 
