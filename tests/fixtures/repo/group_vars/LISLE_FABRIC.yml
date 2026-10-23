@@ -1,0 +1,24 @@
+---
+_fabric_facts_verified: true
+data_center: lisle
+fabric_name: LISLE
+type: l3leaf
+l3leaf:
+  defaults:
+    loopback_ipv4_pool: 192.0.2.0/26
+    vtep_loopback_ipv4_pool: 192.0.2.64/26
+    mlag_peer_ipv4_pool: 192.0.2.128/26
+    mlag_peer_l3_ipv4_pool: 192.0.2.192/26
+    virtual_router_mac_address: "00:1c:73:00:00:99"
+    mlag_interfaces: [Ethernet47, Ethernet48]
+  node_groups:
+    - group: PAIR1
+      bgp_as: "65101"
+      nodes:
+        - {name: leaf1a, id: 1, loopback_ipv4_address: 10.250.0.1}
+        - {name: leaf1b, id: 2, loopback_ipv4_address: 10.250.0.2}
+    - group: PAIR2
+      bgp_as: "65102"
+      nodes:
+        - {name: leaf2a, id: 3, loopback_ipv4_address: 10.250.0.3}
+        - {name: leaf2b, id: 4, loopback_ipv4_address: 10.250.0.4}

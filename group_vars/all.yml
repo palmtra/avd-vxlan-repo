@@ -1,0 +1,14 @@
+---
+# -----------------------------------------------------------------------------
+# CloudVision (CVaaS) deploy settings. The RW service-account token comes from
+# the CV_TOKEN environment variable (AAP credential or CI secret), never a file.
+# -----------------------------------------------------------------------------
+cv_server: www.cv-prod-us-central1-c.arista.io
+
+# Static Configuration Studio: one root container per DC, one sub-container
+# per leaf matched by this CloudVision tag query. {hostname} is the inventory
+# name; any host variable works, e.g. "device:{serial_number}" once the
+# fabric mirror lists serial numbers (AVD itself matches on serial).
+cv_device_tag_query: "hostname:{hostname}"
+cv_root_container: "VXLAN Migration {dc}"
+cv_configlet_name: "VXLAN-MIGRATION_{hostname}"

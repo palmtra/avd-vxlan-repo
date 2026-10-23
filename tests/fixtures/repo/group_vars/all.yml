@@ -1,0 +1,5 @@
+---
+cv_server: cv.example.invalid
+cv_device_tag_query: "hostname:{hostname}"
+cv_root_container: "VXLAN Migration {dc}"
+cv_configlet_name: "VXLAN-MIGRATION_{hostname}"

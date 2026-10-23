@@ -1,0 +1,32 @@
+---
+# -----------------------------------------------------------------------------
+# Omaha fabric facts, mirrored from production. NOT rendered, NOT deployed.
+# See group_vars/LISLE_FABRIC.yml for what each value is used for.
+#
+# PLACEHOLDERS: replace with production values, then set
+# _fabric_facts_verified to true. Deploy refuses to run for this DC until then.
+# -----------------------------------------------------------------------------
+_fabric_facts_verified: false
+data_center: omaha
+
+fabric_name: OMAHA
+type: l3leaf
+
+l3leaf:
+  defaults:
+    loopback_ipv4_pool: 198.51.100.0/26
+    vtep_loopback_ipv4_pool: 198.51.100.64/26
+    mlag_peer_ipv4_pool: 198.51.100.128/26
+    mlag_peer_l3_ipv4_pool: 198.51.100.192/26
+    virtual_router_mac_address: "00:1c:73:00:00:99"
+    mlag_interfaces: [Ethernet47, Ethernet48]
+  node_groups:
+    - group: OMA_LEAF_1
+      bgp_as: "65201"
+      nodes:
+        - name: eos-leaf-oma-01
+          id: 1
+          loopback_ipv4_address: 198.51.100.1
+        - name: eos-leaf-oma-02
+          id: 2
+          loopback_ipv4_address: 198.51.100.2

@@ -1,0 +1,22 @@
+---
+# Render the migration configlets locally (intended/configs/<leaf>.cfg).
+#   ansible-playbook playbooks/build.yml [-e dc=lisle]
+# Same as `python -m avd_services build`; this wrapper is for AAP job templates.
+- name: Build VXLAN migration services with AVD
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    dc: ""
+    avd_python: "{{ ansible_playbook_python }}"
+  tasks:
+    - name: Check the services and render the configlets
+      ansible.builtin.command:
+        argv: "{{ [avd_python, '-m', 'avd_services', 'build'] + (['--dc', dc] if dc | length > 0 else []) }}"
+        chdir: "{{ playbook_dir }}/.."
+      register: _build
+      changed_when: "'rendered ' in _build.stdout"
+
+    - name: Show the build result
+      ansible.builtin.debug:
+        msg: "{{ _build.stdout_lines }}"

@@ -1,0 +1,45 @@
+---
+# -----------------------------------------------------------------------------
+# Lisle network services owned by the VXLAN migration.
+#
+# Each migrated VLAN is one entry: an SVI under its VRF when the gateway moves
+# to the fabric, or an l2vlan when the gateway stays external (firewall).
+# The vxlan-migration repo opens a PR that adds the entry. CI renders the
+# configlets and the PR shows the exact CLI per leaf under intended/configs/.
+#
+# Rules (enforced by `python -m avd_services check`):
+#   - vni_override is required and must sit in this DC's range for _migration.vni_pool.
+#   - tags are leaf pairs (node groups in LISLE_FABRIC.yml) that carry the VLAN.
+#   - SVIs use ip_address_virtual (anycast) only: no secondaries, no DHCP relay.
+#   - mtu at most 9214 (the EOS SVI maximum).
+#   - rd_override is the RD's assigned number (the leaf router-id is the admin
+#     field); rt_override is the full route-target. The migration sets both
+#     from the fabric's scheme. Without them AVD uses <router-id>:<vni> and
+#     <vni>:<vni>.
+#   - VRFs already exist on the fabric. They are listed so AVD can place the
+#     SVI; the VRF itself is never rendered. vrf_vni must be the fabric value.
+#   - Centralized anycast: the SVI is tagged with the gateway pair and the same
+#     VLAN id is an l2vlan tagged with every other pair that carries it.
+#
+# Example (distributed anycast, VLAN 100 on one leaf pair):
+#   tenants:
+#     - name: LISLE_MIGRATION
+#       vrfs:
+#         - name: PROD
+#           vrf_vni: 50001
+#           svis:
+#             - id: 100
+#               name: WEB
+#               enabled: true
+#               tags: [LIS_LEAF_1]
+#               ip_address_virtual: 10.100.0.1/24
+#               mtu: 9214
+#               vni_override: 10100
+#               rd_override: 100
+#               rt_override: "50001:100"
+#               _migration:
+#                 vni_pool: customer
+#                 gateway_mode: distributed_anycast
+#                 source: legacy VLAN 100 on eos-mls-lis-01/02
+# -----------------------------------------------------------------------------
+tenants: []

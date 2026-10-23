@@ -1,0 +1,44 @@
+---
+# -----------------------------------------------------------------------------
+# Leaves (VTEPs) per data center.
+#
+# <DC>_FABRIC    Facts about the running fabric that AVD needs to compute
+#                route distinguishers and to run at all (node ids, ASN,
+#                router-id, MLAG pairing). Mirrored from production. Nothing
+#                in it is rendered or deployed.
+# <DC>_SERVICES  Network services this repo owns: the VLANs, SVIs and VNIs
+#                added by the VXLAN migration. This is all that is rendered.
+#
+# Leaf pairs are the node_groups in group_vars/<DC>_FABRIC.yml. A service is
+# placed on leaf pairs with `tags: [<node group>]`.
+#
+# The two DCs are isolated (no multisite). They are built separately and
+# deployed with separate change controls.
+# -----------------------------------------------------------------------------
+all:
+  children:
+    LISLE:
+      children:
+        LISLE_FABRIC:
+          children:
+            LISLE_LEAVES:
+        LISLE_SERVICES:
+          children:
+            LISLE_LEAVES:
+    LISLE_LEAVES:
+      hosts:
+        eos-leaf-lis-01:
+        eos-leaf-lis-02:
+
+    OMAHA:
+      children:
+        OMAHA_FABRIC:
+          children:
+            OMAHA_LEAVES:
+        OMAHA_SERVICES:
+          children:
+            OMAHA_LEAVES:
+    OMAHA_LEAVES:
+      hosts:
+        eos-leaf-oma-01:
+        eos-leaf-oma-02:

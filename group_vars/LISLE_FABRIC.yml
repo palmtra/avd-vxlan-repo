@@ -1,0 +1,47 @@
+---
+# -----------------------------------------------------------------------------
+# Lisle fabric facts, mirrored from production. NOT rendered, NOT deployed.
+#
+# AVD needs a fabric to place network services on. Only the service keys of
+# its output (VLANs, SVIs, VXLAN VLAN-to-VNI maps, router bgp vlan blocks) go
+# into the migration configlet. Everything here only has to be right where it
+# shows up in those keys:
+#   - loopback_ipv4_address  router-id, the admin field of each VLAN's RD
+#   - bgp_as                 the `router bgp <asn>` line the VLAN blocks sit in
+# The RD/RT scheme is not set here: every service carries vni_override, and
+# then AVD takes RD and RT from the service (rd_override / rt_override, set by
+# the migration from the fabric's scheme) or defaults to <router-id>:<vni> and
+# <vni>:<vni>.
+# Pools, MLAG interfaces and the virtual router MAC must be present for AVD to
+# run but never reach a device.
+#
+# PLACEHOLDERS: the values below are documentation addresses and private ASNs.
+# Replace them with the production values, then set _fabric_facts_verified to
+# true. Deploy refuses to run for this DC until then.
+# -----------------------------------------------------------------------------
+_fabric_facts_verified: false
+data_center: lisle
+
+fabric_name: LISLE
+type: l3leaf
+
+l3leaf:
+  defaults:
+    # Required by AVD, not rendered.
+    loopback_ipv4_pool: 192.0.2.0/26
+    vtep_loopback_ipv4_pool: 192.0.2.64/26
+    mlag_peer_ipv4_pool: 192.0.2.128/26
+    mlag_peer_l3_ipv4_pool: 192.0.2.192/26
+    virtual_router_mac_address: "00:1c:73:00:00:99"
+    mlag_interfaces: [Ethernet47, Ethernet48]
+  node_groups:
+    # One node group per leaf pair. The group name is the tag services use.
+    - group: LIS_LEAF_1
+      bgp_as: "65101"
+      nodes:
+        - name: eos-leaf-lis-01
+          id: 1
+          loopback_ipv4_address: 192.0.2.1
+        - name: eos-leaf-lis-02
+          id: 2
+          loopback_ipv4_address: 192.0.2.2

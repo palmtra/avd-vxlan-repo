@@ -1,0 +1,21 @@
+---
+# -----------------------------------------------------------------------------
+# L2 VNI ranges per data center and pool. Same content as
+# vxlan-migration/inventory/group_vars/all/vni_ranges.yml: the migration picks
+# the VNI, this repo checks it is in range. NetBox replaces both later.
+#
+# Ranges must not overlap. A service's _migration.vni_pool picks the range
+# (default: vni_default_pool).
+#
+# PLACEHOLDERS: null until the real ranges are agreed. While a range is null
+# `check` warns and does not range-check VNIs in that pool.
+# -----------------------------------------------------------------------------
+vni_ranges:
+  lisle:
+    internal: {start: null, end: null}
+    customer: {start: null, end: null}
+  omaha:
+    internal: {start: null, end: null}
+    customer: {start: null, end: null}
+
+vni_default_pool: customer

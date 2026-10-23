@@ -1,0 +1,38 @@
+---
+name: ci
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Lint YAML
+        run: yamllint .
+      - name: Unit tests
+        run: pytest -q tests
+      - name: Check services (repo rules + AVD schema)
+        run: python -m avd_services check
+      - name: Render configlets
+        run: python -m avd_services build
+      - name: Rendered configlets are committed
+        # The PR diff under intended/ is the CLI each leaf will get. A PR that
+        # changes services without the matching render fails here.
+        run: |
+          if ! git diff --exit-code -- intended/ || [ -n "$(git status --porcelain -- intended/)" ]; then
+            echo "::error::intended/ is out of date. Run 'python -m avd_services build' and commit the result."
+            git status --porcelain -- intended/
+            exit 1
+          fi

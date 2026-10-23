@@ -1,0 +1,37 @@
+---
+tenants:
+  - name: LISLE_MIGRATION
+    vrfs:
+      - name: PROD
+        vrf_vni: 50001
+        svis:
+          # Distributed anycast on both pairs.
+          - id: 100
+            name: WEB
+            enabled: true
+            tags: [PAIR1, PAIR2]
+            ip_address_virtual: 10.100.0.1/24
+            mtu: 9214
+            vni_override: 20100
+            rd_override: 100
+            rt_override: "50001:100"
+            _migration: {vni_pool: customer, gateway_mode: distributed_anycast}
+          # Centralized anycast: gateway on PAIR2, L2 only on PAIR1.
+          - id: 200
+            name: APP
+            enabled: true
+            tags: [PAIR2]
+            ip_address_virtual: 10.200.0.1/24
+            vni_override: 10200
+            _migration: {vni_pool: internal, gateway_mode: centralized_anycast}
+    l2vlans:
+      - id: 200
+        name: APP
+        tags: [PAIR1]
+        vni_override: 10200
+        _migration: {vni_pool: internal}
+      # External gateway (firewall): L2 only.
+      - id: 300
+        name: FW_DMZ
+        tags: [PAIR1]
+        vni_override: 20300

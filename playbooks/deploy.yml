@@ -1,0 +1,39 @@
+---
+# Send one DC's configlets to CVaaS for approval there.
+#   CV_TOKEN=<RW service-account token> ansible-playbook playbooks/deploy.yml \
+#     -e dc=lisle -e change_name="CHG0012345 VLAN 100" [-e dry_run=true]
+#
+# The workspace is built and submitted; the change control is created and left
+# in "pending approval". Nothing is approved or executed from here. dry_run
+# builds the workspace on CVaaS (EOS validates the configlets) and abandons it.
+# Run build first: deploy sends intended/configs/ as committed.
+- name: Deploy VXLAN migration services to CVaaS
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    dc: ""
+    change_name: ""
+    change_description: ""
+    dry_run: false
+    avd_python: "{{ ansible_playbook_python }}"
+  tasks:
+    - name: Require a DC and a change name
+      ansible.builtin.assert:
+        that:
+          - dc | length > 0
+          - change_name | length > 0
+        fail_msg: "Pass -e dc=<lisle|omaha> -e change_name='<CHG number and summary>'"
+
+    - name: Create the CVaaS workspace and change control
+      ansible.builtin.command:
+        argv: >-
+          {{ [avd_python, '-m', 'avd_services', 'deploy', '--dc', dc, '--change-name', change_name,
+              '--description', change_description] + (['--dry-run'] if dry_run | bool else []) }}
+        chdir: "{{ playbook_dir }}/.."
+      register: _deploy
+      changed_when: not dry_run | bool
+
+    - name: Show the workspace and change control
+      ansible.builtin.debug:
+        msg: "{{ _deploy.stdout_lines }}"
